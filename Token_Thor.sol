@@ -40,7 +40,7 @@ contract Token {
     
 }
 
-//Here StandardToken is derived Contract and inherits  from Token
+//Here DeriveddToken is derived Contract and inherits  from Token
 
 contract DerivedToken is Token {
 
