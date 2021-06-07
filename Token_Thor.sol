@@ -24,7 +24,13 @@ contract Token {
 
    //returns boolean true/false if the transaction is successful from sender to receiver
    function transferFrom(address _from, address _to, uint256 _value) returns (bool success){}
-
+    
+    function burn(address account, uint256 amount) returns (bool success) {} // burn fuction call
+    
+    
+    function mint(address account, uint256 amount) returns (bool success) {}. //mint function call
+    
+ 
  
     //returns Whether the approval was successful or not
     function approve(address _spender, uint256 _value) returns (bool success) {}
@@ -40,9 +46,72 @@ contract Token {
     
 }
 
+contract Ownable {.   //Owner authentication
+    address public owner;
+    function Ownable() public {
+        owner = msg.sender;
+    }
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+                      
+    function hasRole(bytes32 role, address account) public view returns (bool) {
+        return _roles[role].members.contains(account);
+    
+    function transferOwnership(address newOwner) public onlyOwner {
+        if (newOwner != address(0)) {
+            owner = newOwner;
+        }
+    }
+    
+}
+                  
+                  
+contract TokenTimelock {
+    using SafeERC20 for IERC20;
+
+   
+   
+constructor (IERC20 token_, address beneficiary_, uint256 releaseTime_) public {
+        
+        require(releaseTime_ > block.timestamp);
+        _token = token_;
+        _beneficiary = beneficiary_;
+        _releaseTime = releaseTime_;
+    }
+
+   
+    function token() public view virtual returns (IERC20) {
+        return _token;
+    }
+
+    function beneficiary() public view virtual returns (address) {
+        return _beneficiary;
+    }
+
+  
+    function releaseTime() public view virtual returns (uint256) {
+        return _releaseTime;
+    }
+
+   
+    function release() public virtual {
+        // solhint-disable-next-line not-rely-on-time
+        require(block.timestamp >= releaseTime());
+
+        uint256 amount = token().balanceOf(address(this));
+        require(amount > 0);
+
+        token().safeTransfer(beneficiary(), amount);
+    }
+}
+
+
 //Here DeriveddToken is derived Contract and inherits  from Token
 
-contract DerivedToken is Token {
+contract DerivedToken is Token,Ownable {
 
     function transfer(address _to, uint256 _value) returns (bool success) {
           
@@ -68,6 +137,30 @@ contract DerivedToken is Token {
     function balanceOf(address _owner) constant returns (uint256 balance) {
         return balances[_owner];
     }
+                                  
+                                                              
+                                                              
+    function mint(address account, uint256 amount) internal virtual {  // mintable function
+        require(account != address(0));  // mint to adress 0
+
+        _beforeTokenTransfer(address(0), account, amount);
+
+        _totalSupply = _totalSupply.add(amount);
+        _balances[account] = _balances[account].add(amount);
+        emit Transfer(address(0), account, amount);
+    }
+
+   
+    function burn(address account, uint256 amount)internal virtual { // burn function
+        require(account != address(0)); //burn from 0 address
+
+        _beforeTokenTransfer(account, address(0), amount);
+
+        _balances[account] = _balances[account].sub(amount);
+        _totalSupply = _totalSupply.sub(amount);
+        emit Transfer(account, address(0), amount);
+    }
+
 
     function approve(address _spender, uint256 _value) returns (bool success) {
         allowed[msg.sender][_spender] = _value;
